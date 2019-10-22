@@ -3,11 +3,15 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <vector>
+#include <map>
 #include <arpa/inet.h>
 #include <netinet/ether.h>
 #include "pcap_handle.h"
 
-int get_mac(const char * dev, const pcap_t * handle, const uint32_t my_ip, const MAC my_mac, uint32_t ip, MAC * mac){
+using namespace std;
+
+int get_mac(const char * dev, pcap_t * handle, const uint32_t my_ip, const MAC my_mac, uint32_t ip, MAC * mac){
 
 	// broadcast arp request
 	MAC broadcast;
@@ -26,7 +30,7 @@ int get_mac(const char * dev, const pcap_t * handle, const uint32_t my_ip, const
 		if(ntohs(((Eth_header*)packet)->ether_type) != ETHERTYPE_ARP) continue;
 		arp_pkt = (ARP_header*)(packet + 0xE);
 
-		if(ntohl(arp_pkt->sender_addr) == sender_ip && ntohs(arp_pkt->opcode) == ARPOP_REPLY) break;
+		if(ntohl(arp_pkt->sender_addr) == ip && ntohs(arp_pkt->opcode) == ARPOP_REPLY) break;
 	}
 	memcpy(mac, &(arp_pkt->sender_mac), 6);
 
@@ -71,6 +75,17 @@ int send_arp(const char * dev, MAC s_mac, uint32_t s_ip, MAC t_mac, uint32_t t_i
 	int e=pcap_sendpacket(fp, packet, packet_len);
 
 	return 0;
+}
+
+void send_arp_frequently(int frequency, vector<Session> s_list, map<uint32_t, MAC> mac_map, const char * dev, MAC my_mac){
+
+	while(1){
+		sleep(frequency);
+		for(vector<Session>::iterator it = s_list.begin();
+			it != s_list.end();
+			it++)
+			send_arp(dev, my_mac, it->target_ip, mac_map[it->sender_ip], it->sender_ip, ARPOP_REPLY);
+	}
 }
 
 void print_MAC(const char* label, MAC mac){

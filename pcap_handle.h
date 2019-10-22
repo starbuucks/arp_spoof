@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 
+using namespace std;
+
 typedef struct _mac{
 	uint8_t i[6];
 } MAC;
@@ -50,7 +52,14 @@ typedef struct _tcp_header{
 	uint16_t urg_ptr;
 } TCP_header;
 
+struct Session{
+	uint32_t sender_ip;
+	uint32_t target_ip;
+};
+
+int get_mac(const char * dev, pcap_t * handle, const uint32_t my_ip, const MAC my_mac, uint32_t ip, MAC * mac);
 int send_arp(const char * dev, MAC s_mac, uint32_t s_ip, MAC t_mac, uint32_t t_ip, int op);
+void send_arp_frequently(int frequency, vector<Session> s_list, map<uint32_t, MAC> mac_map, const char * dev, MAC my_mac);
 void print_MAC(const char* label, MAC mac);
 void print_IP(const char* label, uint32_t ip);
 void str_to_ip(char* ip_str, uint32_t* out);
