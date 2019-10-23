@@ -51,7 +51,7 @@ Session find_session(const Eth_header* eth, vector<Session> s, map<uint32_t, MAC
 }
 
 void relay(const char * dev, const IP_header *ip, Session s, map<uint32_t, MAC> m){
-
+	printf("relay!\n");
 	u_char *packet;
 	uint16_t iplen = ntohs(ip->total_len);
 	int packet_len = 0xE + iplen;
@@ -131,7 +131,7 @@ int main(int argc, char* argv[]) {
   		}
 	}
 
-	thread arp_thread(send_arp_frequently, 100, session_array, m, dev, my_mac);
+	thread arp_thread(send_arp_frequently, 10, session_array, m, dev, my_mac);
 	arp_thread.detach();
 
 	while(true){
@@ -147,6 +147,7 @@ int main(int argc, char* argv[]) {
 
 		Session cur_session = find_session(eth, session_array, m);
 
+		printf("%x\n", ntohs(eth->ether_type));
 		if(ntohs(eth->ether_type) == ETHERTYPE_IP){
 			const IP_header *ip = (IP_header *)(eth + 0xE);
 			relay(dev, ip, cur_session, m);

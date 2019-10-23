@@ -39,6 +39,8 @@ int get_mac(const char * dev, pcap_t * handle, const uint32_t my_ip, const MAC m
 
 int send_arp(const char * dev, MAC s_mac, uint32_t s_ip, MAC t_mac, uint32_t t_ip, int op){
 
+	printf("send arp ");
+
 	// make ARP packet
 	int packet_len = sizeof(Eth_header) + sizeof(ARP_header);
 	u_char* packet = (u_char*)malloc(packet_len);
@@ -80,11 +82,12 @@ int send_arp(const char * dev, MAC s_mac, uint32_t s_ip, MAC t_mac, uint32_t t_i
 void send_arp_frequently(int frequency, vector<Session> s_list, map<uint32_t, MAC> mac_map, const char * dev, MAC my_mac){
 
 	while(1){
-		sleep(frequency);
 		for(vector<Session>::iterator it = s_list.begin();
 			it != s_list.end();
 			it++)
 			send_arp(dev, my_mac, it->target_ip, mac_map[it->sender_ip], it->sender_ip, ARPOP_REPLY);
+
+		sleep(frequency);
 	}
 }
 
