@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <vector>
 #include <map>
 #include <arpa/inet.h>
@@ -18,9 +19,15 @@ int get_mac(const char * dev, pcap_t * handle, const uint32_t my_ip, const MAC m
 	memset(&broadcast, '\xFF', 6);
 	send_arp(dev, my_mac, my_ip, broadcast, ip, ARPOP_REQUEST);
 
+	clock_t start;
+	start = time(0);
 	// wait for the response
 	ARP_header * arp_pkt;
 	while (true) {
+		if(time(0) - start > 5){
+			send_arp(dev, my_mac, my_ip, broadcast, ip, ARPOP_REQUEST);
+			start = time(0);
+		}
 		struct pcap_pkthdr* header;
 		const u_char* packet;
 		int res = pcap_next_ex(handle, &header, &packet);
@@ -38,8 +45,6 @@ int get_mac(const char * dev, pcap_t * handle, const uint32_t my_ip, const MAC m
 }
 
 int send_arp(const char * dev, MAC s_mac, uint32_t s_ip, MAC t_mac, uint32_t t_ip, int op){
-
-	printf("send arp ");
 
 	// make ARP packet
 	int packet_len = sizeof(Eth_header) + sizeof(ARP_header);
@@ -75,6 +80,8 @@ int send_arp(const char * dev, MAC s_mac, uint32_t s_ip, MAC t_mac, uint32_t t_i
 	pcap_t *fp;
 	fp = pcap_open_live(dev, 65536, 0, 1000, errbuf);
 	int e=pcap_sendpacket(fp, packet, packet_len);
+
+	free(packet);
 
 	return 0;
 }
@@ -115,4 +122,13 @@ void str_to_ip(char* ip_str, uint32_t* out){
 		ip_arr[3 - i] = atoi(ip_str + st);
 	}
 	memcpy(out, ip_arr, 4);
+}
+
+void print_packet(const char* des, const u_char* packet, int len){
+	printf("\n[%s] packet", des);
+	for(int i = 0; i < len; i++){
+		if(i % 16 == 0) printf("\n");
+		printf("%02x ", *(packet + i));
+	}
+	printf("\n");
 }

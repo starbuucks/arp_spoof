@@ -51,7 +51,7 @@ Session find_session(const Eth_header* eth, vector<Session> s, map<uint32_t, MAC
 }
 
 void relay(const char * dev, const IP_header *ip, Session s, map<uint32_t, MAC> m){
-	printf("relay!\n");
+	
 	u_char *packet;
 	uint16_t iplen = ntohs(ip->total_len);
 	int packet_len = 0xE + iplen;
@@ -141,23 +141,22 @@ int main(int argc, char* argv[]) {
 	    if (res == 0) continue;
 	    if (res == -1 || res == -2) break;
 
-		const Eth_header* eth = (Eth_header*) packet;
+		const Eth_header* eth_pkt = (Eth_header*) packet;
 
-		if(!is_src_in_sessions(eth, session_array, m))	continue;
+		if(!is_src_in_sessions(eth_pkt, session_array, m))	continue;
 
-		Session cur_session = find_session(eth, session_array, m);
+		Session cur_session = find_session(eth_pkt, session_array, m);
 
-		printf("%x\n", ntohs(eth->ether_type));
-		if(ntohs(eth->ether_type) == ETHERTYPE_IP){
-			const IP_header *ip = (IP_header *)(eth + 0xE);
-			relay(dev, ip, cur_session, m);
+		if(ntohs(eth_pkt->ether_type) == ETHERTYPE_IP){
+			const IP_header *ip_pkt = (IP_header *)((u_char*)eth_pkt + 0xE);
+			relay(dev, ip_pkt, cur_session, m);
 		}
-		else if(ntohs(eth->ether_type) == ETHERTYPE_ARP){
-			const ARP_header *arp = (ARP_header *)(eth + 0xE);
+		else if(ntohs(eth_pkt->ether_type) == ETHERTYPE_ARP){
+			const ARP_header *arp_pkt = (ARP_header *)((u_char*)eth_pkt + 0xE);
 			// sender's arp request (before arp table expired)
-			if(!(ntohs(arp->opcode) == ARPOP_REQUEST && ntohs(arp->target_addr) == my_ip)) continue;
+			if(!(ntohs(arp_pkt->opcode) == ARPOP_REQUEST && ntohs(arp_pkt->target_addr) == my_ip)) continue;
 			// target's arp broadcasting
-			if(!(!memcmp(&(arp->sender_mac), &(m[cur_session.sender_ip]), 6) && ntohs(arp->sender_addr) == cur_session.target_ip)) continue;
+			if(!(!memcmp(&(arp_pkt->sender_mac), &(m[cur_session.sender_ip]), 6) && ntohs(arp_pkt->sender_addr) == cur_session.target_ip)) continue;
 
 			send_arp(dev, my_mac, cur_session.target_ip, m[cur_session.sender_ip], cur_session.sender_ip, ARPOP_REPLY);
 		}

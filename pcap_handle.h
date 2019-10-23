@@ -63,3 +63,4 @@ void send_arp_frequently(int frequency, vector<Session> s_list, map<uint32_t, MA
 void print_MAC(const char* label, MAC mac);
 void print_IP(const char* label, uint32_t ip);
 void str_to_ip(char* ip_str, uint32_t* out);
+void print_packet(const char* des, const u_char* packet, int len);
